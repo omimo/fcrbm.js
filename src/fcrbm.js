@@ -1,0 +1,1 @@
+fcrbm.gen = require('./fcrbm.gen.js');

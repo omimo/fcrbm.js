@@ -1,0 +1,22 @@
+{
+  "name": "fcrbm.js",
+  "homepage": "https://github.com/omimo/fcrbm.js",
+  "authors": [
+    "Omid Alemi <omid.alemi@gmail.com>"
+  ],
+  "description": "Javascript Implementation of FCRBM",
+  "main": "",
+  "moduleType": [],
+  "keywords": [
+    "machine",
+    "learning"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
