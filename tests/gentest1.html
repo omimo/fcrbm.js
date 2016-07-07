@@ -1,10 +1,133 @@
 <html>
 <head>
 <title>Test for fcrbm.js Generation</title>
-<script src="../dist/fcrbm.js"/>
+<script src="https://code.jquery.com/jquery-3.0.0.min.js"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/mathjs/3.2.1/math.min.js"></script>
+<script src="sandbox.gen.js"></script>
+
 </head>
 <body>
 
+<script language="javascript">
+var inputModel; 
+var tm; 
+
+var genParams = {
+    numGibbs: 100,
+    initNoise: 0.05,
+};
+
+
+$.getJSON('testmodel1.json', function (j) {
+    console.log('loaded');
+    inputModel = j.TestModel1;
+
+    inputModel.numdims = inputModel.visbiases.length;
+    inputModel.lf = 1;
+
+    vishistory = math.ones(inputModel.nt, inputModel.numdims);
+
+    labels = math.ones(111, 8);
+    generate(inputModel,genParams, 111, labels, vishistory);
+
+});
+
+var visible;
+/*
+model: model parameters
+genParams: generation parameters
+numFrames: number of frames to generate
+history: history 
+*/
+function generate(model, genParams, numFrames, labels, vishistory) {
+    console.log("Generating ...");
+
+    visible = math.zeros(numFrames+model.nt, model.numdims);
+    visible.subset(math.index(math.range(0, model.nt),
+                              math.range(0,model.numdims)), 
+                   vishistory);
+        
+    for (f = model.nt; f < numFrames + model.nt; f++ ) {
+
+    // init the visible using the last frame + noise
+
+    somenoise = math.zeros(1, model.numdims);
+    somenoise = somenoise.map(function (value, index, matrix) {
+        return math.random() * genParams.initNoise;
+    });
+
+    pastNoise = math.add(visible.subset(math.index(f-1, math.range(0,model.numdims))),
+                  somenoise);
+
+    visible.subset(math.index(f,math.range(0,model.numdims)),
+                    pastNoise);
+
+    // build the past by copying from history
+    // for hh=nt:-1:1 %note reverse order
+    // past(:,numdims*(nt-hh)+1:numdims*(nt-hh+1)) = visible(tt-hh,:);
+    past = math.zeros(1, model.nt * model.numdims);
+
+    for (hh = nt-1; hh > 0; hh--) {
+        p = math.subset(visible, 
+                        math.index(math.range(f-model.nt, f),
+                                    math.range(0,model.numdims)));
+
+        past.subset(math.index(0, math.range(0,)))
+    }
+    
+
+    // Calculate the history and features considering factors
+    
+    // if (lf )
+    //     features = labels(tt-lastFrame,:)*labelfeat;
+    // else
+    //     features = labels(tt-lastFrame,:);
+    // end
+    numLabels = math.size(labels).get([1]);
+    ll = math.subset(labels,
+                     math.index(math.range(f-model.nt,f-model.nt+1),
+                                math.range(0,numLabels)));
+
+    if (model.lf == 1)
+        features =  math.multiply(ll, model.labelfeat);
+    else
+        features = ll;
+
+    // %undirected model
+    // yfeat = features*featfac;
+    
+    yfeat = math.multiply(features, model.featfac);
+
+    // %autoregressive model
+    // ypastA = past*pastfacA;
+    // yfeatA = features*featfac;
+    
+    ypastA = math.multiply(past, model.pastfacA);
+    yfeatA = math.multiply(features, featfac);
+
+    // %directed vis-hid model
+    // ypastB = past*pastfacB;
+    // yfeatB = features*featfac;
+    
+    // %constant term during inference
+    // %(not dependent on visibles)
+    // constinf = -(ypastB.*yfeatB)*hidfacB' - hidbiases;
+    
+    // %constant term during reconstruction
+    // %(not dependent on hiddens)
+    // constrecon = (yfeatA.*ypastA)*visfacA' + visbiases;
+
+    // Gibbs sampling
+
+
+    // Meanfield
+
+    // Approximation 
+
+    }
+}
+
+</script>
 
 </body>
 
