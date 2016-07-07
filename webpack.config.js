@@ -8,7 +8,7 @@ var plugins =  [
 minimize && plugins.push(new webpack.optimize.UglifyJsPlugin());
 
 module.exports = {
-    entry: {fcrbmjs: "./src/fcrbm.js"},
+    entry: {fcrbm: "./src/fcrbm.js"},
     devtool: "source-map",
     output: {
         path: __dirname+"/dist/",
