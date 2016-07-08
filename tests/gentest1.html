@@ -4,11 +4,18 @@
 <script src="https://code.jquery.com/jquery-3.0.0.min.js"></script>
 <script src="http://cdnjs.cloudflare.com/ajax/libs/mathjs/3.2.1/math.min.js"></script>
 <script src="sandbox.gen.js"></script>
-
+<style>
+#activCanvas {
+    width: 70%; 
+    height: 750px; 
+    border:rgba(0, 0, 0, 1) solid 1px;
+    /*background: black;*/
+}
+</style>
 </head>
 <body>
 
-<canvas id="activCanvas" style="width: 70%; height: 600px; border:rgba(0, 0, 0, 1) solid 1px"></canvas>
+<canvas id="activCanvas"></canvas>
 
 <script language="javascript">
 // This is basically going to be a port of Taylor's Matlab code to javascript
@@ -17,7 +24,7 @@ var inputModel;
 var tm; 
 
 var genParams = {
-    numGibbs: 10,
+    numGibbs: 1,
     initNoise: 0.05,
 };
 
@@ -31,8 +38,8 @@ $.getJSON('testmodel1.json', function (j) {
 
     vishistory = math.ones(inputModel.nt, inputModel.numdims);
 
-    labels = math.ones(24, 8);
-    generate(inputModel,genParams, 24, labels, vishistory);
+    labels = math.ones(1, 8);
+    generate(inputModel,genParams, 1, labels, vishistory);
 
 });
 
@@ -78,7 +85,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
 
         for (var hh = model.nt-1; hh >= 0; hh--) {
             var p = math.subset(visible, 
-                            math.index(math.range(f-model.nt,f-model.nt+1),
+                            math.index(math.range(f-hh,f+1 -hh),
                                         math.range(0,model.numdims)));
             
             past.subset(math.index(math.range(0,1),
@@ -86,8 +93,6 @@ function generate(model, genParams, numFrames, labels, vishistory) {
                                         (model.nt-hh)*model.numdims) 
                                     ),p);
         }
-        
-
         // Calculate the history and features considering factors
         
         // if (lf )
@@ -205,7 +210,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         var v = math.dotMultiply(yfeat, yhid_);
             v = math.multiply(v, math.transpose(model.visfac));
             v = math.add(v, constrecon);
-            visible.subset(math.index(f,math.range(0,model.numdims)),
+        visible.subset(math.index(f,math.range(0,model.numdims)),
                         v);
 
         updateHidAc2(f,pp.toArray());
@@ -218,18 +223,16 @@ function generate(model, genParams, numFrames, labels, vishistory) {
 function updateHidAc2(f, aa) {    
     var canvas = document.getElementById('activCanvas');
     var context = canvas.getContext("2d");	
-    var radius = 0.3;
+    var radius = 0.2;
     for (var i=0; i < aa[0].length; i++) {
         context.beginPath();
-        context.arc(f*2, i/2, radius, 0, 2 * Math.PI, false);
-        context.fillStyle = 'rgba(10,20,19,'+aa[0][i] +')';
+        context.arc(f*2, i/4, radius, 0, 2 * Math.PI, false);
+        context.fillStyle = 'rgba(0,0,0,'+ (aa[0][i] * 1)  +')';
         context.fill();
     }
     
 }
 </script>
-
- 
 
 </body>
 
