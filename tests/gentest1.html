@@ -9,11 +9,13 @@
 <body>
 
 <script language="javascript">
+// This is basically going to be a port of Taylor's Matlab code to javascript
+
 var inputModel; 
 var tm; 
 
 var genParams = {
-    numGibbs: 100,
+    numGibbs: 30,
     initNoise: 0.05,
 };
 
@@ -27,8 +29,8 @@ $.getJSON('testmodel1.json', function (j) {
 
     vishistory = math.ones(inputModel.nt, inputModel.numdims);
 
-    labels = math.ones(111, 8);
-    generate(inputModel,genParams, 111, labels, vishistory);
+    labels = math.ones(4, 8);
+    generate(inputModel,genParams, 4, labels, vishistory);
 
 });
 
@@ -42,13 +44,16 @@ history: history
 function generate(model, genParams, numFrames, labels, vishistory) {
     console.log("Generating ...");
 
-    visible = math.zeros(numFrames+model.nt, model.numdims);
+    visible     = math.zeros(numFrames+model.nt, model.numdims);
+    poshidprobs = math.zeros(numFrames, model.numhid);
+    hidstates = math.zeros(numFrames, model.numhid);
+
     visible.subset(math.index(math.range(0, model.nt),
                               math.range(0,model.numdims)), 
                    vishistory);
         
     for (f = model.nt; f < numFrames + model.nt; f++ ) {
-
+    console.log('frame '+(f-model.nt +1));
     // init the visible using the last frame + noise
 
     somenoise = math.zeros(1, model.numdims);
@@ -67,12 +72,15 @@ function generate(model, genParams, numFrames, labels, vishistory) {
     // past(:,numdims*(nt-hh)+1:numdims*(nt-hh+1)) = visible(tt-hh,:);
     past = math.zeros(1, model.nt * model.numdims);
 
-    for (hh = nt-1; hh > 0; hh--) {
+    for (hh = model.nt-1; hh >= 0; hh--) {
         p = math.subset(visible, 
-                        math.index(math.range(f-model.nt, f),
+                        math.index(math.range(f-model.nt,f-model.nt+1),
                                     math.range(0,model.numdims)));
-
-        past.subset(math.index(0, math.range(0,)))
+        
+        past.subset(math.index(math.range(0,1),
+                        math.range((model.nt-hh-1)*model.numdims,
+                                    (model.nt-hh)*model.numdims) 
+                                ),p);
     }
     
 
@@ -103,22 +111,70 @@ function generate(model, genParams, numFrames, labels, vishistory) {
     // yfeatA = features*featfac;
     
     ypastA = math.multiply(past, model.pastfacA);
-    yfeatA = math.multiply(features, featfac);
+    yfeatA = math.multiply(features, model.featfac);
 
     // %directed vis-hid model
     // ypastB = past*pastfacB;
     // yfeatB = features*featfac;
+
+    ypastB = math.multiply(past, model.pastfacB);
+    yfeatB = math.multiply(features, model.featfac); 
     
     // %constant term during inference
     // %(not dependent on visibles)
     // constinf = -(ypastB.*yfeatB)*hidfacB' - hidbiases;
     
+    t = math.dotMultiply(ypastB,yfeatB);
+    t = math.multiply(-1,t);
+    t = math.multiply(t,math.transpose(model.hidfacB));
+    hidbiases = math.matrix(model.hidbiases).clone();
+    hidbiases.resize([1,model.hidbiases.length]);
+    constinf =  math.subtract(t,hidbiases);
+
     // %constant term during reconstruction
     // %(not dependent on hiddens)
     // constrecon = (yfeatA.*ypastA)*visfacA' + visbiases;
 
-    // Gibbs sampling
+    t = math.dotMultiply(yfeatA,ypastA);
+    t = math.multiply(t,math.transpose(model.visfacA));
+    visbiases = math.matrix(model.visbiases).clone();
+    visbiases.resize([1,model.visbiases.length]);
+    constrecon =  math.add(t,visbiases);
 
+    // Gibbs sampling
+    
+    for (g = 0; g < genParams.numGibbs; g++) {
+        // yvis = visible(tt,:)*visfac;        
+        yvis = math.multiply(
+            visible.subset(math.index(f,math.range(0,model.numdims))),
+            model.visfac);
+
+        // %pass through sigmoid
+        // %only part from "undirected" model changes
+        // poshidprobs(tt,:) = 1./(1 + exp(-(yvis.*yfeat)*hidfac' + constinf));
+
+        bottomup = math.dotMultiply(yvis,yfeat);
+        bottomup = math.multiply(-1,bottomup);
+        bottomup = math.multiply(bottomup,math.transpose(model.hidfac));
+
+        et = math.add(1,math.exp(math.add(bottomup,constinf)));
+        et = math.dotDivide(1,et);
+        poshidprobs.subset(math.index(f+model.nt,math.range(0,model.numhid)),et);
+
+        // %Activate the hidden units
+        // hidstates(tt,:) = single(poshidprobs(tt,:) > rand(1,numhid));
+        
+        // yhid = hidstates(tt,:)*hidfac;
+        
+        // %NEGATIVE PHASE
+        // %Don't add noise at visibles
+        // %Note only the "undirected" term changes
+        // visible(tt,:) = (yfeat.*yhid)*visfac' + constrecon;
+    }
+        
+        
+        
+    
 
     // Meanfield
 
