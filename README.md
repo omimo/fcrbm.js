@@ -2,7 +2,7 @@
 Javascript implementation of the Factored Conditional Restricted Boltzmann Machines
 
 ### Feedback, Bugs, and Questions
-For any questions, feedback, and bug reports, please use the [Github Issues](https://github.com/omimo/fcrbmjs/issues).
+For any questions, feedback, and bug reports, please use the [Github Issues](https://github.com/omimo/fcrbm.js/issues).
 
 ### Credits
 Created by [Omid Alemi](http://omid.al)
