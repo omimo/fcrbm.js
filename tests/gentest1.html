@@ -24,7 +24,7 @@ var inputModel;
 var tm; 
 
 var genParams = {
-    numGibbs: 1,
+    numGibbs: 2,
     initNoise: 0.05,
 };
 
@@ -38,10 +38,21 @@ $.getJSON('testmodel1.json', function (j) {
 
     vishistory = math.ones(inputModel.nt, inputModel.numdims);
 
-    labels = math.ones(1, 8);
-    generate(inputModel,genParams, 1, labels, vishistory);
+    labels = math.ones(3, 8);
+    generate(inputModel,genParams, 3, labels, vishistory);
 
 });
+
+var lastTime = 0;
+var timeCount = 0;
+function timeStamp() {
+    if (lastTime == 0) {
+        lastTime = Date.now();                
+    }
+    timeCount++;
+    console.log(timeCount +": " + (Date.now()-lastTime));
+    lastTime = Date.now();
+}
 
 var visible;
 /*
@@ -53,46 +64,71 @@ history: history
 function generate(model, genParams, numFrames, labels, vishistory) {
     console.log("Generating ...");
 
+    timeStamp(1);
+
     visible     = math.zeros(numFrames + model.nt, model.numdims);
     poshidprobs = math.zeros(numFrames, model.numhid);
     hidstates   = math.zeros(numFrames, model.numhid);
 
-    console.log(hidstates.size());
-
     visible.subset(math.index(math.range(0, model.nt),
                               math.range(0,model.numdims)), 
                    vishistory);
-        
-    for (var f = model.nt; f < numFrames + model.nt; f++ ) {
-        console.log(f+': frame '+(f-model.nt +1));
+
+    // de-objectifying and inlining everything
+
+    var numLabels = math.size(labels).get([1]);
+
+    labelfeat   = model.labelfeat;
+    featfac     = model.featfac;
+    pastfacA    = model.pastfacA;
+    pastfacB    = model.pastfacB;
+    hidfacB     = model.hidfacB;
+    hidfac      = model.hidfac;
+    nt          = model.nt;
+    numdims     = model.numdims;
+    numhid      = model.numhid;
+    hidbiases   = model.hidbiases;
+    visfac      = model.visfac;
+    visfacA     = model.visfacA;
+    visbiases   = model.visbiases;
+    lf          = model.lf;
+
+    timeStamp(2);
+
+    for (var f = nt; f < numFrames + nt; f++ ) {
+        console.log(f+': frame '+(f-nt +1));
+        timeStamp(3);
         // init the visible using the last frame + noise
 
-        var somenoise = math.zeros(1, model.numdims);
+        var somenoise = math.zeros(1, numdims);
         somenoise = somenoise.map(function (value, index, matrix) {
             return math.random() * genParams.initNoise;
         });
 
-        var pastNoise = math.add(visible.subset(math.index(f-1, math.range(0,model.numdims))),
+        var pastNoise = math.add(visible.subset(math.index(f-1, math.range(0,numdims))),
                     somenoise);
 
-        visible.subset(math.index(f,math.range(0,model.numdims)),
+        visible.subset(math.index(f,math.range(0,numdims)),
                         pastNoise);
+
+        timeStamp(4);
 
         // build the past by copying from history
         // for hh=nt:-1:1 %note reverse order
         // past(:,numdims*(nt-hh)+1:numdims*(nt-hh+1)) = visible(tt-hh,:);
-        var past = math.zeros(1, model.nt * model.numdims);
+        var past = math.zeros(1, nt * numdims);
 
-        for (var hh = model.nt-1; hh >= 0; hh--) {
+        for (var hh = nt-1; hh >= 0; hh--) {
             var p = math.subset(visible, 
                             math.index(math.range(f-hh,f+1 -hh),
-                                        math.range(0,model.numdims)));
+                                        math.range(0,numdims)));
             
             past.subset(math.index(math.range(0,1),
-                            math.range((model.nt-hh-1)*model.numdims,
-                                        (model.nt-hh)*model.numdims) 
+                            math.range((nt-hh-1)*numdims,
+                                        (nt-hh)*numdims) 
                                     ),p);
         }
+        timeStamp(5);
         // Calculate the history and features considering factors
         
         // if (lf )
@@ -100,63 +136,64 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         // else
         //     features = labels(tt-lastFrame,:);
         // end
-        var numLabels = math.size(labels).get([1]);
+        
         var ll = math.subset(labels,
-                        math.index(math.range(f-model.nt,f-model.nt+1),
+                        math.index(math.range(f-nt,f-nt+1),
                                     math.range(0,numLabels)));
 
-        if (model.lf == 1)
-            features =  math.multiply(ll, model.labelfeat);
+        if (lf == 1)
+            features =  math.multiply(ll, labelfeat);
         else
             features = ll;
 
         // %undirected model
         // yfeat = features*featfac;
         
-        var yfeat = math.multiply(features, model.featfac);
+        var yfeat = math.multiply(features, featfac);
 
         // %autoregressive model
         // ypastA = past*pastfacA;
         // yfeatA = features*featfac;
         
-        var ypastA = math.multiply(past, model.pastfacA);
-        var yfeatA = math.multiply(features, model.featfac);
+        var ypastA = math.multiply(past, pastfacA);
+        var yfeatA = math.multiply(features, featfac);
 
         // %directed vis-hid model
         // ypastB = past*pastfacB;
         // yfeatB = features*featfac;
 
-        var ypastB = math.multiply(past, model.pastfacB);
-        var yfeatB = math.multiply(features, model.featfac); 
-        
+        var ypastB = math.multiply(past, pastfacB);
+        var yfeatB = math.multiply(features, featfac); 
+        timeStamp(6);
         // %constant term during inference
         // %(not dependent on visibles)
         // constinf = -(ypastB.*yfeatB)*hidfacB' - hidbiases;
         
         var t = math.dotMultiply(ypastB,yfeatB);
         t = math.multiply(-1,t);
-        t = math.multiply(t,math.transpose(model.hidfacB));
-        var hidbiases = math.matrix(model.hidbiases).clone();
-        hidbiases.resize([1,model.hidbiases.length]);
-        var constinf =  math.subtract(t,hidbiases);
-
+        t = math.multiply(t,math.transpose(hidfacB));
+        var hidbiases2 = math.matrix(hidbiases).clone();
+        hidbiases2.resize([1,hidbiases.length]);
+        var constinf =  math.subtract(t,hidbiases2);
+        timeStamp(7);
         // %constant term during reconstruction
         // %(not dependent on hiddens)
         // constrecon = (yfeatA.*ypastA)*visfacA' + visbiases;
 
         var t2 = math.dotMultiply(yfeatA,ypastA);
-        t2 = math.multiply(t2,math.transpose(model.visfacA));
-        var visbiases = math.matrix(model.visbiases).clone();
-        visbiases.resize([1,model.visbiases.length]);
-        var constrecon =  math.add(t2,visbiases);
+        t2 = math.multiply(t2,math.transpose(visfacA));
+        var visbiases2 = math.matrix(visbiases).clone();
+        visbiases2.resize([1,visbiases.length]);
+        var constrecon =  math.add(t2,visbiases2);
 
         // Gibbs sampling
         
+        timeStamp(8);
         for (var g = 0; g < genParams.numGibbs; g++) {
             // yvis = visible(tt,:)*visfac;        
             var yvis = math.multiply(
-                visible.subset(math.index(f,math.range(0,model.numdims))),
-                model.visfac);
+                visible.subset(math.index(f,math.range(0,numdims))),
+                visfac);
 
             // %pass through sigmoid
             // %only part from "undirected" model changes
@@ -164,28 +201,28 @@ function generate(model, genParams, numFrames, labels, vishistory) {
 
             var bottomup = math.dotMultiply(yvis,yfeat);
                 bottomup = math.multiply(-1,bottomup);
-                bottomup = math.multiply(bottomup,math.transpose(model.hidfac));
+                bottomup = math.multiply(bottomup,math.transpose(hidfac));
 
             var et = math.add(1,math.exp(math.add(bottomup,constinf)));
             et = math.dotDivide(1,et);
-            poshidprobs.subset(math.index(f+model.nt,math.range(0,model.numhid)),et);
+            poshidprobs.subset(math.index(f+nt,math.range(0,numhid)),et);
 
             // %Activate the hidden units
             // hidstates(tt,:) = single(poshidprobs(tt,:) > rand(1,numhid));
             
-            var act = math.zeros(1, model.numhid);
-            var pp = poshidprobs.subset(math.index(f+model.nt,math.range(0,model.numhid)));        
+            var act = math.zeros(1, numhid);
+            var pp = poshidprobs.subset(math.index(f+nt,math.range(0,numhid)));        
             act = pp.clone().map(function (value, index, matrix) {
                 if (value > math.random())
                     return 1;
                 else
                     return 0;            
             });        
-            hidstates.subset(math.index(f+model.nt,math.range(0,model.numhid)),act);
+            hidstates.subset(math.index(f+nt,math.range(0,numhid)),act);
         
 
             // yhid = hidstates(tt,:)*hidfac;
-            var yhid = math.multiply(act, model.hidfac);
+            var yhid = math.multiply(act, hidfac);
 
             // %NEGATIVE PHASE
             // %Don't add noise at visibles
@@ -193,29 +230,31 @@ function generate(model, genParams, numFrames, labels, vishistory) {
             // visible(tt,:) = (yfeat.*yhid)*visfac' + constrecon;
 
             var v = math.dotMultiply(yfeat, yhid);
-            v = math.multiply(v, math.transpose(model.visfac));
+            v = math.multiply(v, math.transpose(visfac));
             v = math.add(v, constrecon);
-            visible.subset(math.index(f,math.range(0,model.numdims)),
+            visible.subset(math.index(f,math.range(0,numdims)),
                         v);
+        timeStamp(9);
         }
-
-        var pp = poshidprobs.subset(math.index(f+model.nt,math.range(0,model.numhid)));             
+        
+        var pp = poshidprobs.subset(math.index(f+nt,math.range(0,numhid)));             
 
         // Meanfield
         // yhid_ = poshidprobs(tt,:)*hidfac; %smoothed version
-        var yhid_ = math.multiply(pp, model.hidfac);
+        var yhid_ = math.multiply(pp, hidfac);
 
         // Approximation 
         // visible(tt,:) = (yfeat.*yhid_)*visfac' + constrecon;    
         var v = math.dotMultiply(yfeat, yhid_);
-            v = math.multiply(v, math.transpose(model.visfac));
+            v = math.multiply(v, math.transpose(visfac));
             v = math.add(v, constrecon);
-        visible.subset(math.index(f,math.range(0,model.numdims)),
+        visible.subset(math.index(f,math.range(0,numdims)),
                         v);
 
         updateHidAc2(f,pp.toArray());
     }
 
+    timeStamp(10);
     console.log("Done generating!");
 }
 
