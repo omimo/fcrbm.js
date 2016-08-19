@@ -25,7 +25,7 @@ var inputModel;
 var tm; 
 
 var genParams = {
-    numGibbs: 2,
+    numGibbs: 4,
     initNoise: 0.05,
 };
 
@@ -130,8 +130,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
             for (i=numdims*(nt-hh-1);i<numdims*(nt-hh);i++)
                 for (j=0;j<numdims;j++)
                     past.data[0][i+j] = visible.data[f-hh][j]; 
-        }
-        console.log(past);
+        }        
         timeStamp(5);
         // Calculate the history and features considering factors
         
@@ -146,7 +145,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         if (lf == 1)
             features.dot_(labelfeat);        
 
-        timeStamp(5.5);
+        timeStamp(6);
         // %undirected model
         // yfeat = features*featfac;
         
@@ -165,7 +164,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
 
         var ypastB = past.dot(pastfacB);
         var yfeatB = features.dot(featfac); 
-        timeStamp(6);
+        timeStamp(7);
         // %constant term during inference
         // %(not dependent on visibles)
         // constinf = -(ypastB.*yfeatB)*hidfacB' - hidbiases;
@@ -181,9 +180,8 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         var t = ypastB.mul(yfeatB);
         t.mulEach_(-1);
         t.dot_(hidfacB.trans());
-        // var hidbiases2 = Matrix.reshapeFrom(hidbiases,1,hidbiases.length);
         var constinf = t.minus(hidbiases);
-        timeStamp(7);
+        timeStamp(8);
 
         // %constant term during reconstruction
         // %(not dependent on hiddens)
@@ -199,12 +197,11 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         var t2 = yfeatA.mul(ypastA);        
         t2.dot_(visfacA.trans());
         // var visbiases2 = Matrix.reshapeFrom(visbiases,1,visbiases.length);
-        var constrecon = t2.plus(visbiases);        
+        var constrecon = t2.plus(visbiases);            
+        
+        timeStamp(9);
+        
         // Gibbs sampling
-        
-        timeStamp(8);
-        
-        
         for (var g = 0; g < genParams.numGibbs; g++) {
             // yvis = visible(tt,:)*visfac;                              
             var yvis = new Matrix(visible.data[f]);             
@@ -252,7 +249,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
             var v = yfeat.mul(yhid).dot(visfac.trans()).plus(constrecon);
             visible.data[f] = v.data[0];
             
-        timeStamp(9);
+        timeStamp(10);
         }                             
         var yhid_ = new Matrix(poshidprobs.data[f]);
         // Meanfield
@@ -266,9 +263,10 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         visible.data[f] = v.data[0];
         
         updateHidAc2(f,poshidprobs.data[f]);
+        timeStamp(11);
     }
 
-    timeStamp(10);
+    timeStamp(12);
     console.log("Done generating!");
 }
 

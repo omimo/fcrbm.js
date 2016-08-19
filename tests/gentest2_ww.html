@@ -1,0 +1,100 @@
+<html>
+<head>
+<title>Test for fcrbm.js Generation</title>
+<script src="https://code.jquery.com/jquery-3.0.0.min.js"></script>
+<!--<script src="http://cdnjs.cloudflare.com/ajax/libs/mathjs/3.2.1/math.min.js"></script>-->
+<script src="../node_modules/linear-algebra/dist/linear-algebra.min.js"/>
+<script src="sandbox.gen.js"></script>
+<style>
+#activCanvas {
+    width: 70%; 
+    height: 750px; 
+    border:rgba(0, 0, 0, 1) solid 1px;
+    /*background: black;*/
+}
+</style>
+</head>
+<body>
+
+<canvas id="activCanvas"></canvas>
+
+<script language="javascript">
+// This is basically going to be a port of Taylor's Matlab code to javascript
+
+var inputModel; 
+var tm; 
+
+var genParams = {
+    numGibbs: 4,
+    initNoise: 0.05,
+};
+
+
+
+var linearAlgebra =  linearAlgebra(),
+    Vector = linearAlgebra.Vector,
+    Matrix = linearAlgebra.Matrix;
+
+
+var ww;
+
+$.getJSON('testmodel1.json', function (j) {
+    console.log('loaded');
+    inputModel = j.TestModel1;
+
+    inputModel.numdims = inputModel.visbiases.length;
+    inputModel.lf = 1;
+
+    vishistory = Matrix.zero(inputModel.nt, inputModel.numdims).plusEach_(1);    
+
+    labels = Matrix.zero(30, 8).eleMap_(function(v, row, col) {
+        return 1;
+        if (col == 0 || col == 2)
+            return 3;
+        else if (col == 1 || col == 3)
+            return 1;
+        else if (col == 4 || col == 5)
+            return 0.5;
+        else if (col == 6)
+            return 1;
+        else if (col == 7)
+            return 0;            
+    });
+    
+    if (typeof(Worker) !== "undefined") {
+        console.log("Using web workers");        
+        ww = new Worker("sandbox.gen.js");
+        ww.onmessage = function(event) {
+            updateHidAc2(event.data[0],event.data[1]);
+        };
+
+        ww.postMessage([inputModel,genParams, 10, labels, vishistory]);
+    } else {
+        console.log("Not using web workers");
+        // Sorry! No Web Worker support..
+        generate(inputModel,genParams, 1, labels, vishistory);
+    }
+
+});
+
+bb = [];
+function updateHidAc2(f, aa) { 
+    bb = aa;
+
+    var canvas = document.getElementById('activCanvas');
+    var context = canvas.getContext("2d");	
+    var radius = 0.2;
+    for (var i=0; i < aa.length; i++) {
+        context.beginPath();
+        context.arc(f*2, i/4, radius, 0, 2 * Math.PI, false);
+        context.fillStyle = 'rgba(0,0,0,'+ (aa[i] * 1.2)  +')';
+        context.fill();
+    }
+    
+}
+</script>
+
+</body>
+
+
+</html>
