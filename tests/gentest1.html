@@ -38,8 +38,8 @@ $.getJSON('testmodel1.json', function (j) {
 
     vishistory = math.ones(inputModel.nt, inputModel.numdims);
 
-    labels = math.ones(3, 8);
-    generate(inputModel,genParams, 3, labels, vishistory);
+    labels = math.ones(30, 8);
+    generate(inputModel,genParams, 30, labels, vishistory);
 
 });
 
@@ -93,11 +93,11 @@ function generate(model, genParams, numFrames, labels, vishistory) {
     visbiases   = model.visbiases;
     lf          = model.lf;
 
-    timeStamp(2);
+    // timeStamp(2);
 
     for (var f = nt; f < numFrames + nt; f++ ) {
         console.log(f+': frame '+(f-nt +1));
-        timeStamp(3);
+        // timeStamp(3);
         // init the visible using the last frame + noise
 
         var somenoise = math.zeros(1, numdims);
@@ -111,7 +111,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         visible.subset(math.index(f,math.range(0,numdims)),
                         pastNoise);
 
-        timeStamp(4);
+        // timeStamp(4);
 
         // build the past by copying from history
         // for hh=nt:-1:1 %note reverse order
@@ -128,7 +128,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
                                         (nt-hh)*numdims) 
                                     ),p);
         }
-        timeStamp(5);
+        // timeStamp(5);
         // Calculate the history and features considering factors
         
         // if (lf )
@@ -146,6 +146,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         else
             features = ll;
 
+        // timeStamp(5.5);
         // %undirected model
         // yfeat = features*featfac;
         
@@ -164,7 +165,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
 
         var ypastB = math.multiply(past, pastfacB);
         var yfeatB = math.multiply(features, featfac); 
-        timeStamp(6);
+        // timeStamp(6);
         // %constant term during inference
         // %(not dependent on visibles)
         // constinf = -(ypastB.*yfeatB)*hidfacB' - hidbiases;
@@ -175,7 +176,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
         var hidbiases2 = math.matrix(hidbiases).clone();
         hidbiases2.resize([1,hidbiases.length]);
         var constinf =  math.subtract(t,hidbiases2);
-        timeStamp(7);
+        // timeStamp(7);
         // %constant term during reconstruction
         // %(not dependent on hiddens)
         // constrecon = (yfeatA.*ypastA)*visfacA' + visbiases;
@@ -188,7 +189,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
 
         // Gibbs sampling
         
-        timeStamp(8);
+        // timeStamp(8);
         for (var g = 0; g < genParams.numGibbs; g++) {
             // yvis = visible(tt,:)*visfac;        
             var yvis = math.multiply(
@@ -234,7 +235,7 @@ function generate(model, genParams, numFrames, labels, vishistory) {
             v = math.add(v, constrecon);
             visible.subset(math.index(f,math.range(0,numdims)),
                         v);
-        timeStamp(9);
+        // timeStamp(9);
         }
         
         var pp = poshidprobs.subset(math.index(f+nt,math.range(0,numhid)));             
@@ -266,7 +267,7 @@ function updateHidAc2(f, aa) {
     for (var i=0; i < aa[0].length; i++) {
         context.beginPath();
         context.arc(f*2, i/4, radius, 0, 2 * Math.PI, false);
-        context.fillStyle = 'rgba(0,0,0,'+ (aa[0][i] * 1)  +')';
+        context.fillStyle = 'rgba(0,0,0,'+ (aa[0][i] * 1.2)  +')';
         context.fill();
     }
     
