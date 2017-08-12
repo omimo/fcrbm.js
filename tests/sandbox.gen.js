@@ -1,8 +1,6 @@
 //
 importScripts("../node_modules/linear-algebra/dist/linear-algebra.min.js");
-
 //
-
 
 var inputModel; 
 var tm; 
@@ -54,10 +52,8 @@ function generate(model, genParams, numFrames, labels, vishistory) {
     for(i=0;i<vishistory.data.length;i++) {
         visible.data[i] = vishistory.data[i];
     }
-    
 
     // de-objectifying and inlining everything
-
     numLabels = labels.data[0].length;
 
     labelfeat   = new Matrix(model.labelfeat);
@@ -78,8 +74,6 @@ function generate(model, genParams, numFrames, labels, vishistory) {
     initNoise   = genParams.initNoise;
 
     timeStamp(2);
-
-    visfac__   = new Matrix(model.visfac);
 
     for (var f = nt; f < numFrames + nt; f++ ) {        
         console.log(f+': frame '+(f-nt +1));
